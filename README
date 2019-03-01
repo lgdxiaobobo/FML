@@ -1,0 +1,16 @@
+A spark version about Factrorization Metric Learning for Ranking
+
+mainly based on Metric Factorization: Recommendation beyond Matrix Factorization
+
+codes structure:
+  src.jyb
+    FMModel.scala: main-model 
+    package.scala: basic function
+    Param.scala: model-based parameters
+    test.scala: IO for model
+
+Assumption:
+  the number of users >> the number of items
+  thus, distributed users in blocks (like mllib.ALS), and store items locally (as A map)
+
+  utilize AdaGard for adaptive adjusting study-rate
