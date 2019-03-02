@@ -14,10 +14,10 @@ object test {
     val seed0 = args(1).toLong
     val maxIter = args(2).toInt
     val param = new Param(cfgDir)
-    val model = FMModel(param, 10)
+    val model = FMModel(param, 20)
       .setCheckDir("/checkPoint/app_with_sementic/FML")
       .setUserBlocks(128)
-      .setBatchSize(10000)
+      .setBatchSize(50000)
 
     val ss = SparkSession.builder()
       .appName("FM-Rank")
