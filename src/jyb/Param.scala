@@ -14,6 +14,7 @@ class Param extends Serializable {
   private var eta = 0.05
   private var rank = 10
   private var dropRate = 0.05
+  private var batchSize = 1000
 
   def this(dir: String) {
     this()
@@ -34,6 +35,8 @@ class Param extends Serializable {
       getParam(xmlReader, "eta").toDouble
     this.dropRate =
       getParam(xmlReader, "drop").toDouble
+    this.batchSize =
+      getParam(xmlReader, "batchSize").toInt
   }
 
   def getA: Double = this.a
@@ -43,6 +46,7 @@ class Param extends Serializable {
   def getRank: Int = this.rank
   def getAlpha: Double = this.alpha
   def getDropRate: Double = this.dropRate
+  def getBatchSize: Int = this.batchSize
 
   private def getParam(reader: xml.Elem, x: String):
   String = {
