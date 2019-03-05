@@ -153,38 +153,44 @@ case class FMModel(param: Param, batchNum: Int) {
                   matW: RDD[(Int, Array[Double])],
                   matH: Map[Int, Array[Double]]):
   Double = {
-    // assume test: Row(u, pos, neg)
+    // assume test: Row(u, pos0, pos1)
+    // pos0: train-used items
+    // pos1: test-used items
     val ss = test.sparkSession
     val sc = ss.sparkContext
     import ss.implicits._
-    val rDF = test.toDF("u", "pos", "neg")
+    val rDF = test.toDF("u", "pos0", "pos1")
       .as("R").persist(intermediateStorage)
     val wDF = matW.toDF("u", "wu")
       .as("W").persist(intermediateStorage)
     val t1 = rDF.join(wDF, rDF("u") === wDF("u"))
-      .select("R.pos", "R.neg", "W.wu")
-      .toDF("pos", "neg", "wu")
+      .select("R.pos0", "R.pos1", "W.wu")
+      .toDF("pos0", "pos1", "wu")
       .as("T1").persist(intermediateStorage)
     t1.count()
     rDF.unpersist()
     wDF.unpersist()
     val hBD = sc.broadcast(matH)
     val rankLoss =
-      (pos: Array[Int], neg: Array[Int], wu: Array[Double]) => {
-        val withScore =
-          pos.map{i => (1.0, distance2(hBD.value(i), wu))} ++
-            neg.map{j => (0.0, distance2(hBD.value(j), wu))}
-        val sz = pos.length
-        val sorted = withScore.sortBy(_._2).map(_._1)
-          .view.zipWithIndex
-        val DG = sorted.map{case (rui, rank) =>
-          div(rui * math.log(2.0), math.log(rank + 2))
+      (pos0: Array[Int], pos1: Array[Int], wu: Array[Double]) => {
+        val used = (pos0 ++ pos1).toSet
+        val negWithScore = hBD.value.toArray
+          .filter{case (j, _) => !used.contains(j)}
+          .map{case (_, hj) => distance2(wu, hj)}
+        val sz = pos1.length
+        val DG = pos1.map{i =>
+          val hi = hBD.value(i)
+          val dui = distance2(wu, hi)
+          negWithScore.count(_ <= dui)
+        }.map{r =>
+          math.log(2.0) / math.log(r + 2.0)
         }.sum
         div(DG, sz)
       }
-    val loss = t1.as[(Array[Int], Array[Int], Array[Double])].rdd
-      .map{case (pos, neg, wu) => rankLoss(pos, neg, wu)}
-      .mean()
+    val loss =
+      t1.as[(Array[Int], Array[Int], Array[Double])].rdd
+        .map{case (pos0, pos1, wu) => rankLoss(pos0, pos1, wu)}
+        .mean()
     t1.unpersist()
     loss
   }
